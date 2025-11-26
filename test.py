@@ -28,6 +28,13 @@ def extract_compound_emoji(text: str) -> list:
 if __name__ == "__main__":
     text = emoji.demojize("❤️")
     print(text)
+
+    emojis = ["😱", "😍", "😍", "😍", "💖"]
+    unique = set(emojis)
+    emojis = list(unique)
+    print(unique)
+    print(emojis)
+
     # extracted = extract_single_emoji(text)
     # print(extracted)
     # en_emojis = [(extracted, 0)]

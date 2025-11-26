@@ -4,29 +4,44 @@ import emoji
 import csv
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from collections import Counter
+import ast
 
 
 class Data:
     size = 500000
     langs = ["en", "it"]  # CHANGE THIS ONE
     labels = ["English", "Italian"]
-    formats = ["tweet", "text"]  # AND THIS
-    data_ids = ["enryu43/twitter100m_tweets", "pere/italian_tweets_1M"]
+    formats = ["tweet", "text"]
+    date_formats = ["date", "created_at"]
+    data_ids = ["enryu43/twitter100m_tweets", "local"]
 
     # labels = {lang: label for lang, label in zip(langs, labels)}
     formats = {lang: format for lang, format in zip(langs, formats)}
+    date_formats = {lang: format for lang, format in zip(langs, date_formats)}
     data_ids = {lang: id for lang, id in zip(langs, data_ids)}
     lang_data = {}
     lang_emoji = {}
 
     def __init__(self) -> None:
-        # load in language datasets from huggingface
+        # load in language datasets
         for lang in self.langs:
-            self.lang_data[lang] = (
-                load_dataset(self.data_ids[lang], split="train").with_format("numpy")
-                # .filter(lambda x: int(x["date"][:4]) >= 2022)
-            )
-            self.lang_data[lang] = self.lang_data[lang].shuffle(seed=497)
+            if self.data_ids[lang] == "local":
+                self.lang_data[lang] = load_dataset(
+                    "parquet", data_files={"train": "it_data/train.parquet"}
+                ).with_format("numpy")["train"]
+            else:
+                self.lang_data[lang] = load_dataset(
+                    self.data_ids[lang], split="train"
+                ).with_format("numpy")
+
+            # filter for tweets in or after 2022
+            # self.lang_data[lang] = self.lang_data[lang].filter(
+            #     lambda x: int(x[self.date_formats[lang]][:4]) >= 2022
+            # )
+
+            # shuffle datapoints
+            # self.lang_data[lang] = self.lang_data[lang].shuffle(seed=497)
 
         # process datasets
         for lang in self.langs:
@@ -84,7 +99,6 @@ class Data:
                     output.append((row[0], row[1]))
         except FileNotFoundError:
             print(f"CSV file {file} not found")
-        print(len(output))
         return output
 
     def percent_with_emojis(self) -> None:
@@ -93,6 +107,7 @@ class Data:
         for i, lang in enumerate(self.lang_data):
             y[i] = len(self.lang_emoji[lang]) / self.size
         plt.figure()
+        plt.title("Percent of tweets containing any emoji")
         plt.bar(self.labels, y)
         plt.savefig("percent_with_emojis.png")
         plt.show()
@@ -103,30 +118,48 @@ class Data:
         if not emoji.is_emoji(input):
             print("Failed. Please input a single Unicode emoji character.")
 
-        y1 = np.empty(len(self.lang_data))
-        y2 = np.empty(len(self.lang_data))
+        y = np.empty(len(self.lang_data))
 
         for i, lang in enumerate(self.langs):
             count = 0
-            for x in tqdm(self.lang_emoji[lang]):
-                if input in x[0]:
+            for x, _ in tqdm(self.lang_emoji[lang]):
+                if input in x:
                     count += 1
-            y1[i] = count / len(self.lang_emoji[lang])
-            y2[i] = count / self.size
+            y[i] = count / len(self.lang_emoji[lang])
 
-        fig, axs = plt.subplots(1, 2)
-        axs[0].set_title("% over num tweets containing emoji")
-        axs[1].set_title("% over total num tweets")
-        axs[0].bar(self.labels, y1)
-        axs[1].bar(self.labels, y2)
+        plt.figure()
+        plt.title(f"Percent of tweets containing {input}")
+        plt.bar(self.labels, y)
         plt.savefig(f"percent_with_{emoji.demojize(input)[1:-1]}")
+        plt.show()
+
+    def top_emoji(self, k: int) -> None:
+        "processes and displays the top k emoji in each language"
+
+        fig, axs = plt.subplots(1, len(self.langs))
+        for i, ax in enumerate(axs):
+            ax.set_title(f"Top {k} {self.labels[i]} Emoji")
+
+        for i, lang in enumerate(self.langs):
+            emoji_counter = Counter()
+            for emojis, _ in self.lang_emoji[lang]:
+                emojis = ast.literal_eval(emojis)
+                unique_emojis = set(emojis)  # remove duplicates in each item
+                emoji_counter.update(unique_emojis)
+
+            most_common = emoji_counter.most_common(k)
+            x, y = zip(*most_common)
+            axs[i].bar(x, y)
+
+        plt.savefig(f"top_{k}_emoji.png")
         plt.show()
 
 
 def main():
     data = Data()
     # data.percent_with_emojis()
-    data.percent_with_specific_emoji(emoji.emojize("😱"))
+    # data.percent_with_specific_emoji(emoji.emojize("😱"))
+    data.top_emoji(10)
 
 
 if __name__ == "__main__":
