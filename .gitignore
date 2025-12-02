@@ -3,3 +3,4 @@ venv/
 en_emojis.csv
 it_emojis.csv
 test.py
+*.png
