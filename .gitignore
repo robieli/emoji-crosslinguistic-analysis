@@ -1,6 +1,11 @@
 it_data/
 venv/
-en_emojis.csv
-it_emojis.csv
+en_emoji.csv
+it_emoji.csv
 test.py
-*.png
+graphs/
+graphs_edited/
+types/
+prag-ref.txt
+__pycache__/
+emojitweets-01-04-2018.txt

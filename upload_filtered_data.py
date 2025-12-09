@@ -1,24 +1,15 @@
 from datasets import load_dataset
-from huggingface_hub import login, HfApi
+import emoji
 
 
 def main():
-    langs = ["en", "it"]  # CHANGE THIS ONE
-    data_ids = ["enryu43/twitter100m_tweets", "local"]
+    langs = ["it"]  # CHANGE THIS ONE
+    data_ids = ["local"]
     # NOTE:
     filter = True
 
     data_ids = {lang: id for lang, id in zip(langs, data_ids)}
     lang_data = {}
-
-    login(token="insert token here")
-    api = HfApi()
-    api.create_repo(
-        "robieli/english_tweets_filtered", repo_type="dataset", exist_ok=True
-    )
-    api.create_repo(
-        "robieli/italian_tweets_filtered", repo_type="dataset", exist_ok=True
-    )
 
     for lang in langs:
         if data_ids[lang] == "local":
@@ -28,20 +19,17 @@ def main():
         else:
             lang_data[lang] = load_dataset(data_ids[lang], split="train")
 
-        print(len(lang_data[lang]))
+        if lang == "it":
+            lang_data[lang] = lang_data[lang].rename_column("created_at", "date")
+
         if filter:
             lang_data[lang] = lang_data[lang].filter(
-                lambda x: x["date"] >= "2022",
+                lambda x: x["date"] >= "2018" and emoji.emoji_count(x["text"]) > 0,
                 batched=False,
             )
-        print(len(lang_data[lang]))
-        print(lang_data[lang][0])
 
         # remove unnecessary columns
-        if lang == "it":
-            lang_data[lang] = lang_data[lang].rename_column("text", "tweet")
-            lang_data[lang] = lang_data[lang].rename_column("created_at", "date")
-        lang_data[lang] = lang_data[lang].select_columns(["tweet", "date"])
+        lang_data[lang] = lang_data[lang].select_columns(["text"])
 
         # filter for tweets in or after 2022
         if filter:
@@ -49,11 +37,9 @@ def main():
             lang_data[lang] = lang_data[lang].select(range(500000))
             print(len(lang_data[lang]))
             if lang == "en":
-                lang_data[lang].push_to_hub("robieli/english_tweets_filtered")
+                lang_data[lang].save_to_disk("../en_data")
             elif lang == "it":
-                lang_data[lang].push_to_hub("robieli/italian_tweets_filtered")
-    print(lang_data["en"][0])
-    print(lang_data["it"][0])
+                lang_data[lang].save_to_disk("../it_data")
 
 
 if __name__ == "__main__":

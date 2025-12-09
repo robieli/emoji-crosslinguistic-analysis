@@ -1,4 +1,4 @@
-from os import remove
+import os
 import numpy as np
 import emoji
 import csv
@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.font_manager import findfont, FontProperties, fontManager
 import re
+from datasets import load_from_disk
 
 
 def extract_single_emoji(text: str) -> list:
@@ -91,4 +92,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    for i in range(5):
+        type = input()
+        valid = ["p", "r", "n"]
+        if type not in valid:
+            print("NOT VALID")
+        else:
+            print("VALID")
